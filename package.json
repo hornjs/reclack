@@ -1,16 +1,17 @@
 {
   "name": "reclack",
   "type": "module",
+  "description": "A small CLI logging library for structured terminal output",
   "version": "0.0.0",
   "author": "Maofeng <hornjs@qq.com>",
   "license": "MIT",
-  "homepage": "https://github.com/hornjs/picotags#readme",
+  "homepage": "https://github.com/hornjs/reclack#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hornjs/picotags.git"
+    "url": "git+https://github.com/hornjs/reclack.git"
   },
   "bugs": {
-    "url": "https://github.com/hornjs/picotags/issues"
+    "url": "https://github.com/hornjs/reclack/issues"
   },
   "files": [
     "dist",
