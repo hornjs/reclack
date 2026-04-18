@@ -1,0 +1,66 @@
+{
+  "name": "reclack",
+  "type": "module",
+  "version": "0.0.0",
+  "author": "Maofeng <hornjs@qq.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/hornjs/picotags#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hornjs/picotags.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hornjs/picotags/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "directories": {
+      "src": "dist"
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./ansi-colors": "./src/ansi-colors.ts",
+    "./ansi-styles": "./src/ansi-styles.ts",
+    "./chalk": "./src/chalk.ts",
+    "./colorette": "./src/colorette.ts",
+    "./picocolors": "./src/picocolors.ts",
+    "./yoctocolors": "./src/yoctocolors.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "release": "bumpp",
+    "prepare:publish": "prepare-publish --print-tree",
+    "prepare:publish:dry-run": "prepare-publish --dry-run",
+    "prepublishOnly": "pnpm run build && pnpm run prepare:publish"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "bumpp": "^11.0.1",
+    "prepare-publish": "^0.1.0",
+    "tsdown": "^0.21.7",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "ansi-colors": "^4.1.3",
+    "ansi-styles": "^6.2.3",
+    "chalk": "^5.6.2",
+    "colorette": "^2.0.20",
+    "is-unicode-supported": "^2.1.0",
+    "picocolors": "^1.1.1",
+    "picotags": "^0.0.2",
+    "sisteransi": "^1.0.5",
+    "yoctocolors": "^2.1.2"
+  }
+}
