@@ -115,6 +115,23 @@ spinner.done("Done");
 
 `done()` 和 `fail()` 会先停止活动 spinner。在 TTY 模式下，它们还会先清掉之前渲染的 spinner 输出，再写最终稳定消息。
 
+### Live Output 协调规则
+
+`overwrite()` 和 `spin()` 都建立在同一套 live renderer 模型之上。
+
+当一个 overwrite 区块结束，并且应该彻底退出 live-output 管理器时，可以调用 `dispose()`：
+
+```ts
+const overwrite = logger.overwrite("Starting...");
+overwrite.dispose();
+```
+
+- 最近一次 `update()` 的 live renderer 会成为当前可见内容
+- `log()`、`info()`、`warn()`、`error()`、`issue()` 这类稳定输出会先临时暂停当前 live renderer，写完后再恢复
+- 当前可见的 live renderer 在结束或被 `dispose()` 后，管理器会回退到上一个仍然存活的 live renderer
+
+这意味着你不需要在写普通日志前手动停止 spinner，logger 会自动协调这次切换。
+
 ## Message 颜色标签语法
 
 `logtra` 支持在 message 里直接写轻量级颜色标签。

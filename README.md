@@ -115,6 +115,23 @@ spinner.done("Done");
 
 `done()` and `fail()` stop the active spinner first. In TTY mode they also clear the previously rendered spinner output before writing the final stable message.
 
+### Live Output Coordination
+
+`overwrite()` and `spin()` are both built on top of the same live renderer model.
+
+Use `dispose()` when an overwrite block is finished and should leave the live-output manager entirely:
+
+```ts
+const overwrite = logger.overwrite("Starting...");
+overwrite.dispose();
+```
+
+- the most recently updated live renderer becomes visible
+- stable logger output such as `log()`, `info()`, `warn()`, `error()`, and `issue()` temporarily suspends the current live renderer and restores it afterwards
+- when an active live renderer is disposed or completed, the manager falls back to the previous live renderer that is still alive
+
+This means you do not need to manually stop a spinner before writing normal logger output. The logger coordinates that transition automatically.
+
 ## Message Color Tags
 
 `logtra` supports lightweight inline color tags inside messages.
