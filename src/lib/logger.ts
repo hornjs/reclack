@@ -30,6 +30,6 @@ export class Logger extends BaseLogger<CollectedIssue> {
 
   step(name: string): StepperHandle {
     this.startStep(name);
-    return new StepperHandle(this.state, name);
+    return new StepperHandle(this.state, this.live, name);
   }
 }

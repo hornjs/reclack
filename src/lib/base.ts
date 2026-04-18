@@ -1,7 +1,18 @@
 import isUnicodeSupported from "is-unicode-supported";
 import { formatColorTags } from "./color.ts";
+import {
+  createLiveRendererManager,
+  type LiveRendererManager,
+  registerLiveRenderer,
+  resumeActiveRenderer,
+  suspendActiveRenderer,
+} from "./live.ts";
 import { colorizeLogMessage, writeMultiline } from "./utils.ts";
-import { createState, flushStepHeader, type State } from "./state.ts";
+import {
+  createState,
+  flushStepHeader,
+  type State,
+} from "./state.ts";
 import type {
   CollectedIssue,
   Issue,
@@ -10,7 +21,7 @@ import type {
   WriteStream,
 } from "./types.ts";
 import { SpinnerHandle } from "./spinner.ts";
-import { OverwriteHandle } from "./overwrite.ts";
+import { createControlledOverwrite, OverwriteHandle } from "./overwrite.ts";
 
 const unicode = isUnicodeSupported();
 const unicodeOr = (value: string, fallback: string) => (unicode ? value : fallback);
@@ -38,9 +49,11 @@ export type WriteOptions = {
 
 export class BaseLogger<T extends CollectedIssue> {
   protected readonly state: State<T>;
+  protected readonly live: LiveRendererManager;
 
-  constructor(options: Options = {}, state?: State<T>) {
+  constructor(options: Options = {}, state?: State<T>, live?: LiveRendererManager) {
     this.state = state ?? createState(options);
+    this.live = live ?? createLiveRendererManager();
   }
 
   protected get indent(): string {
@@ -89,47 +102,96 @@ export class BaseLogger<T extends CollectedIssue> {
   }
 
   overwrite(message = ""): OverwriteHandle {
-    // Any direct output inside a step must flush the deferred header first.
-    flushStepHeader(this.state);
-    this.state.stepHadOutput = true;
-    const overwrite = new OverwriteHandle({
-      stream: this.state.stdout,
-      colorizer: this.state.colorizer,
-      firstPrefix: this.indent,
-      continuationPrefix: this.indent,
-      stripColorTags: this.state.options.stripColorTags ?? false,
-      styleTagAliases: this.state.options.styleTagAliases ?? false,
-    });
+    const overwrite = this.createOverwrite(true);
     if (message) {
       overwrite.update(message);
     }
     return overwrite;
   }
 
+  private createOverwrite(registerRenderer: boolean): OverwriteHandle {
+    // Any direct output inside a step must flush the deferred header first.
+    flushStepHeader(this.state);
+    this.state.stepHadOutput = true;
+    const overwriteOptions = {
+      stream: this.state.stdout,
+      colorizer: this.state.colorizer,
+      firstPrefix: this.indent,
+      continuationPrefix: this.indent,
+      stripColorTags: this.state.options.stripColorTags ?? false,
+      styleTagAliases: this.state.options.styleTagAliases ?? false,
+    };
+    if (registerRenderer) {
+      // Public overwrites participate in the shared live-output slot.
+      // Each update claims visibility through the state coordinator.
+      let controlled!: ReturnType<typeof createControlledOverwrite>;
+      const live = registerLiveRenderer(this.live, {
+        suspend: () => controlled.suspend(),
+        resume: () => controlled.resume(),
+        isVisible: () => controlled.isVisible(),
+      });
+      controlled = createControlledOverwrite(overwriteOptions, {
+        beforeUpdate: () => live.claim(false),
+        onClear: () => live.refresh(),
+        onDispose: () => live.unregister(),
+      });
+      return controlled.handle;
+    }
+    return new OverwriteHandle(overwriteOptions);
+  }
+
   spin(message: string): SpinnerHandle {
     const isTTY = this.state.stdout.isTTY;
     let currentMessage = message;
+    let activeOverwrite: OverwriteHandle | undefined;
+    let unregisterRenderer = () => {};
     let stop = () => {};
     let update = (nextMessage: string) => {
       currentMessage = nextMessage;
     };
 
     if (this.state.colorizer && isTTY) {
-      // Reuse overwrite so spinner updates share the same multiline rendering path.
-      const overwrite = this.overwrite();
+      // Reuse overwrite so spinner frames share the same multiline rendering path,
+      // but register visibility separately so spinner updates can claim the live slot.
+      let controlled!: ReturnType<typeof createControlledOverwrite>;
+      const live = registerLiveRenderer(this.live, {
+        suspend: () => controlled.suspend(),
+        resume: () => controlled.resume(),
+        isVisible: () => controlled.isVisible(),
+      });
+      controlled = createControlledOverwrite({
+        stream: this.state.stdout,
+        colorizer: this.state.colorizer,
+        firstPrefix: this.indent,
+        continuationPrefix: this.indent,
+        stripColorTags: this.state.options.stripColorTags ?? false,
+        styleTagAliases: this.state.options.styleTagAliases ?? false,
+      }, {
+        beforeUpdate: () => live.claim(false),
+        onClear: () => live.refresh(),
+        onDispose: () => live.unregister(),
+      });
+      activeOverwrite = controlled.handle;
+      unregisterRenderer = live.unregister;
+      update = (nextMessage: string) => {
+        currentMessage = nextMessage;
+      };
       let frame = 0;
       const interval = setInterval(() => {
-        overwrite.update(`<cyan>${S_SPIN[frame++ % S_SPIN.length]}</cyan> ${currentMessage}`);
+        activeOverwrite?.update(`<cyan>${S_SPIN[frame++ % S_SPIN.length]}</cyan> ${currentMessage}`);
       }, 80);
       stop = () => {
         clearInterval(interval);
-        overwrite.clear();
+        activeOverwrite?.dispose();
       };
     }
 
     return new SpinnerHandle(
       update,
-      stop,
+      () => {
+        stop();
+        unregisterRenderer();
+      },
       (nextMessage) => this.info(nextMessage),
       (nextMessage) => this.error(nextMessage),
     );
@@ -143,10 +205,12 @@ export class BaseLogger<T extends CollectedIssue> {
 
   protected finishStep(name: string, message = "<green>OK</green>"): void {
     if (!this.state.stepHadOutput) {
+      const stepHeader = this.state.pendingStepHeader ?? `[${name}]`;
+      const outputMessage = message === "" ? stepHeader : `${stepHeader} ${message}`;
       // Keep empty steps visible so callers still get an explicit success marker.
       this.state.stdout.write(`${formatColorTags({
         colorizer: this.state.colorizer,
-        message: `${this.state.pendingStepHeader ?? `[${name}]`} ${message}`,
+        message: outputMessage,
         stripColorTags: this.state.options.stripColorTags ?? false,
         styleTagAliases: this.state.options.styleTagAliases ?? false,
       })}\n`);
@@ -197,6 +261,9 @@ export class BaseLogger<T extends CollectedIssue> {
     continuationPrefix: string,
     stripColorTags = this.state.options.stripColorTags ?? false,
   ): void {
+    // Stable log lines temporarily take over the terminal, so pause the current
+    // live renderer first and restore it afterwards.
+    suspendActiveRenderer(this.live);
     flushStepHeader(this.state);
     this.state.stepHadOutput = true;
     writeMultiline(
@@ -208,5 +275,6 @@ export class BaseLogger<T extends CollectedIssue> {
       stripColorTags,
       this.state.options.styleTagAliases ?? false,
     );
+    resumeActiveRenderer(this.live);
   }
 }

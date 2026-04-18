@@ -1,5 +1,6 @@
 import { BaseLogger } from "./base.ts";
 import { Issuer } from "./issuer.ts";
+import type { LiveRendererManager } from "./live.ts";
 import type { State } from "./state.ts";
 import type { CollectedIssue, Issue, IssueGroup } from "./types.ts";
 
@@ -10,6 +11,7 @@ export class StepperHandle extends BaseLogger<Issue> {
 
   constructor(
     parentState: State<CollectedIssue>,
+    parentLive: LiveRendererManager,
     name: string,
   ) {
     super({}, {
@@ -21,7 +23,7 @@ export class StepperHandle extends BaseLogger<Issue> {
       currentStep: name,
       pendingStepHeader: `<dim>[${name}]</dim>`,
       stepHadOutput: false,
-    });
+    }, parentLive);
     this.parentState = parentState;
     this.name = name;
     this.issuer = new Issuer(this.state);
