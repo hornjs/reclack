@@ -5,7 +5,7 @@ export interface Colorizer {
   is: (name: string) => boolean;
 }
 
-type ColorNodeObject =  {
+type ColorNodeObject = {
   tag: string;
   attrs: TagAttrs;
   rawOpen: string;
@@ -57,7 +57,7 @@ function parseColorMarkup({
 }: FormatColorOptions): ColorNode[] {
   const root: { children: ColorNode[] } = { children: [] };
   const stack: Array<ColorNodeObject> = [
-    { tag: "", rawOpen: "", attrs: {}, children: root.children },
+    { tag: "", rawOpen: "", attrs: [], children: root.children },
   ];
 
   for (const token of tokenize(message)) {
@@ -129,15 +129,15 @@ function applyColor(
   message: string,
   styleTagAliases = false,
 ): string {
-  for (const [key, value] of Object.entries(attrs)) {
-    switch (key) {
+  for (const { name, value } of attrs) {
+    switch (name) {
       case "bold":
       case "italic":
       case "inverse":
       case "underline":
       case "strikethrough":
-        if (colorizer.is(key)) {
-          message = colorizer.wrap(key, message)
+        if (colorizer.is(name)) {
+          message = colorizer.wrap(name, message)
         }
         break;
       case "color":

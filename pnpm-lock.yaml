@@ -27,8 +27,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       picotags:
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.0.3
+        version: 0.0.3
       sisteransi:
         specifier: ^1.0.5
         version: 1.0.5
@@ -660,8 +660,8 @@ packages:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
 
-  picotags@0.0.2:
-    resolution: {integrity: sha512-VFrbeXkdHFrYpGE8rkEdHKLdEKT8yXrHN5u+JVWBOTfflZKfJ97OoANtOIJqkA0GGyChw356OiMfzmlZucZsPQ==}
+  picotags@0.0.3:
+    resolution: {integrity: sha512-6DfTn370Z/6GkWZgrENpN1Lpc/lRp3W60jK9YZIvSFaFdTSsmPETg1J3mf4S1G5qU86w+twy0wFqxLd0U06pBg==}
 
   postcss-selector-parser@7.1.1:
     resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
@@ -1526,7 +1526,7 @@ snapshots:
 
   picomatch@4.0.4: {}
 
-  picotags@0.0.2: {}
+  picotags@0.0.3: {}
 
   postcss-selector-parser@7.1.1:
     dependencies:
